@@ -1,0 +1,160 @@
+# emdash-auth-discord
+
+English | [日本語](./README.ja.md)
+
+Discord login (an authentication provider) for EmDash. Only members of a Discord guild (server) you specify can sign in.
+
+## Features
+
+- Signs in with Discord OAuth2 (authorization code flow with PKCE/S256) and adds a "Log in with Discord" button to the EmDash login screen (the label is configurable with `loginLabel`).
+- Fetches the user's guild list with the `guilds` scope (200 guilds per page, up to 10 pages) and rejects anyone who is not a member of `guildId`.
+- Rejects users whose Discord email is not verified (`email_not_verified`).
+- On every login, syncs the display name and avatar, and records login details in `users.data.discord` (login count, etc.).
+- Roles: users listed in `adminIds` become Admin; everyone else gets `defaultRole` (default `10`, Subscriber). No one becomes Admin automatically unless you opt in to `bootstrapFirstAdmin`.
+- When an Admin logs in through Discord, completes EmDash's initial setup (`emdash:setup_complete`) if it is not complete yet.
+
+> **Warning: guild membership is the only gate.** Every member of `guildId` can log in and is registered with `defaultRole`. If anyone can join your guild (for example through a public invite link), anyone can get that role. Keep `defaultRole` at the minimum you need, and grant higher roles in EmDash afterwards.
+
+## Requirements
+
+- Node.js >= 22
+- Peer dependencies (provided by your app): `emdash >=1.1.0 <2`, `@emdash-cms/auth >=1.1.0 <2`, `react >=18`. Verified with `emdash` 1.2.0.
+- A Discord application with OAuth2 enabled
+
+## Installation
+
+The package is not on the npm registry yet. Install it from GitHub, pinned to a release tag:
+
+```bash
+pnpm add github:leCielEtoile/emdash-auth-discord#semver:v0.1.0
+```
+
+### After npm publication
+
+Once the package is published to npm by this repository's release workflow (check that the npm page links back to `github.com/leCielEtoile/emdash-auth-discord` and shows provenance), you can install it by name:
+
+```bash
+pnpm add emdash-auth-discord
+```
+
+Until then, do not install `emdash-auth-discord` from the registry: a package with that name would not be this one.
+
+## Setup
+
+1. In the [Discord Developer Portal](https://discord.com/developers/applications), create an application. No bot is needed.
+2. Under **OAuth2**, copy the **Client ID** and **Client Secret**, and add this redirect URI:
+
+   ```
+   <your public URL>/_emdash/api/auth/discord/callback
+   ```
+
+   `<your public URL>` must match `EMDASH_SITE_URL` exactly (scheme, host, and port).
+3. Get your guild ID: in Discord, enable **Settings > Advanced > Developer Mode**, right-click the server, and choose **Copy Server ID**. Copy your own user ID the same way (right-click your name > **Copy User ID**) for `adminIds`.
+4. Set the environment variables (for example in `.env`, which must not be committed):
+
+   ```bash
+   DISCORD_CLIENT_ID=123456789012345678
+   DISCORD_CLIENT_SECRET=your-client-secret
+   DISCORD_GUILD_ID=100000000000000001      # read by the example config below
+   DISCORD_ADMIN_IDS=200000000000000001     # your Discord user ID
+   EMDASH_SITE_URL=https://cms.example.com
+   ```
+
+5. Add the provider to `astro.config.mjs`:
+
+   ```js
+   import { defineConfig } from "astro/config"
+   import emdash from "emdash/astro"
+   import { discord } from "emdash-auth-discord"
+
+   export default defineConfig({
+   	integrations: [
+   		emdash({
+   			authProviders: [
+   				discord({
+   					guildId: process.env.DISCORD_GUILD_ID,
+   					defaultRole: 10,
+   					siteTitle: "My Site",
+   					messages: { notGuildMember: "Only members of the My Site Discord server can log in." },
+   				}),
+   			],
+   		}),
+   	],
+   })
+   ```
+
+## Options (`discord({...})`)
+
+Options are validated when `discord()` is called. Invalid values throw an error at startup instead of failing silently at login.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `guildId` | `string` (17-20 digits) | none (required) | ID of the guild whose members may log in. Pass it as a string; numbers lose precision. If unset, every login is rejected (fail-closed). |
+| `defaultRole` | `10 \| 20 \| 30 \| 40` | `10` (Subscriber) | Role given to new non-admin users. `50` (Admin) is not allowed here; use `adminIds`. |
+| `adminIds` | `string[]` (17-20 digits each) | `[]` | Discord user IDs that become Admin. Merged (union) with `DISCORD_ADMIN_IDS`. |
+| `bootstrapFirstAdmin` | `boolean` | `false` | When `true` (or `DISCORD_BOOTSTRAP_FIRST_ADMIN=1`), the first guild member to log in becomes Admin, but only while EmDash's initial setup is not complete. See [Behavior](#behavior). |
+| `scopes` | `string[]` | `["identify", "email", "guilds"]` | OAuth scopes to request. Must include the three defaults. |
+| `siteTitle` | `string` | `"EmDash"` | Site title stored on initial setup completion, only if no site title is set yet. |
+| `loginLabel` | `string` | `"Log in with Discord"` | Text of the login button. |
+| `messages` | `Record<string, string>` | English defaults | Messages shown on the login screen, keyed by error code in camelCase (see below). |
+
+Role values: `10` Subscriber, `20` Contributor, `30` Author, `40` Editor, `50` Admin.
+
+`messages` keys: `providerNotConfigured`, `serverError`, `invalidCallback`, `invalidState`, `oauthDenied`, `notGuildMember`, `emailRequired`, `emailNotVerified`, `signupNotAllowed`, `accountDisabled`, `userNotFound`, `rateLimited`, `discordTimeout`, `tokenExchangeFailed`, `profileFetchFailed`, `guildFetchFailed`, `oauthError`. Unknown keys are rejected. See [README.ja.md](./README.ja.md) for a Japanese example.
+
+## Environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DISCORD_CLIENT_ID` | Yes | OAuth2 client ID. |
+| `DISCORD_CLIENT_SECRET` | Yes (secret) | OAuth2 client secret. Never commit it or write it to logs. |
+| `DISCORD_ADMIN_IDS` | No | Comma-separated Discord user IDs (17-20 digits) to make Admin. Merged with `adminIds`. An invalid ID makes login fail with `provider_not_configured` instead of being ignored. |
+| `DISCORD_BOOTSTRAP_FIRST_ADMIN` | No | `1` enables `bootstrapFirstAdmin`. Any other value leaves it off. |
+| `EMDASH_SITE_URL` | Yes in production | Public URL, used to build the redirect URI. EmDash's `siteUrl` setting is used if this is unset. When `NODE_ENV=production` and neither is set, login fails with `provider_not_configured` (the request's Host header is not trusted). In development it falls back to the request origin. |
+| `DISCORD_BASE_URL` | No (tests only) | Discord base URL (default `https://discord.com`). Only `https`, or `http` on `localhost` / `127.0.0.1`, is accepted. When `NODE_ENV=production`, anything other than `https://discord.com` is an error. |
+| `NODE_ENV` | Recommended | Set `production` in production to enable the checks above. |
+
+Settings such as `guildId` and `defaultRole` are passed as options, not environment variables. Read `process.env` in your app config and pass the values in, as in the example above.
+
+## Behavior
+
+- On failure the user is sent back to `/_emdash/admin/login?error=<code>&message=<message>`. The message is a fixed text per code (English by default, overridable with `messages`); Discord's `error_description` and internal error messages are never shown. Codes: `provider_not_configured`, `server_error`, `invalid_callback`, `invalid_state`, `oauth_denied`, `not_guild_member`, `email_required`, `email_not_verified`, `signup_not_allowed`, `account_disabled`, `user_not_found`, `rate_limited`, `discord_timeout`, `token_exchange_failed`, `profile_fetch_failed`, `guild_fetch_failed`, `oauth_error`.
+- Every failure is logged on the server as `[discord-auth] login failed: <code> {...}` with non-secret details (HTTP status, `Retry-After`, missing setting names). Client secrets, access tokens, and authorization codes are never logged.
+- Each Discord API call times out after 10 seconds (`discord_timeout`). HTTP 429 becomes `rate_limited` and the `Retry-After` value is logged. Requests are not retried.
+- `state` is read and deleted from the session before it is checked, so a used or rejected `state` cannot be used again, and it expires after 10 minutes. PKCE (S256) is used for the token exchange. The session ID is regenerated on successful login (session fixation protection).
+- Role decision: a Discord ID in the admin IDs (`adminIds` ∪ `DISCORD_ADMIN_IDS`) gets Admin (50). Otherwise, if `bootstrapFirstAdmin` is enabled **and** `emdash:setup_complete` is not set, the first person to log in becomes Admin; a warning is logged when this happens. Everyone else gets `defaultRole`.
+- An existing user whose ID is later added to the admin IDs is promoted to Admin on their next login. Users are never demoted automatically.
+- Login record: `users.data.discord` stores the Discord ID, username, locale, first/last login time, and login count.
+
+## Security notes and limitations
+
+- Keep `DISCORD_CLIENT_SECRET` out of version control and logs.
+- Prefer `adminIds`. Enable `bootstrapFirstAdmin` only for the first deployment, log in yourself before anyone else can, then set `adminIds` and turn it off. The "first admin" slot is claimed atomically in the `options` table (`INSERT ... ON CONFLICT DO NOTHING`), so two simultaneous logins cannot both become Admin through it, and it is never granted after setup is complete.
+- **Leaving or being banned from the guild does not end existing sessions.** Membership is checked only at login. To revoke access immediately, disable the user in EmDash (disabled users are rejected at login).
+- **Accounts are linked by verified email.** If a Discord account has the same verified email as an existing EmDash user (including an Admin created with a passkey), logging in with Discord signs in as that user. This lowers that account's protection to the Discord account's. Do not use the same email for a passkey Admin and a Discord account you do not fully trust, or disable the matching EmDash user. Disabled users are rejected before any link is created.
+- **The display name and avatar are overwritten from Discord on every login.** Discord display names are user-controlled, so do not rely on display names in EmDash to identify people.
+- The `state` check is one-time per session, but Astro saves session changes when the response finishes, so two requests sent in parallel with the same session cookie and `state` can both pass the check. Discord authorization codes are single-use and PKCE is required, which limits the impact.
+- Verified on the Node adapter. Environment variables are read from `process.env` first, then fall back to `virtual:emdash/env`. Behavior on Cloudflare Workers is untested.
+- This is a native plugin that depends on EmDash internal APIs (`OptionsRepository`, `AuthProviderDescriptor`, the `virtual:emdash/auth-providers` module). They may change between EmDash versions, so the peer range is capped below 2.0.
+- Guild membership is checked against at most 2000 guilds (200 per page x 10 pages). Users in more guilds are rejected with `guild_fetch_failed`.
+- Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md) (GitHub private vulnerability reporting).
+
+## Testing
+
+```bash
+pnpm install
+pnpm test     # unit tests, route tests (login / callback) and package check tests
+pnpm check    # package sanity checks on the files that are actually published
+```
+
+- Maintainers: project-specific names are checked by `pnpm check` through an optional, git-ignored `.check-package.private-terms` file (one term per line; or set `CHECK_PACKAGE_PRIVATE_TERMS_FILE`). The check is skipped when the file is absent.
+
+Route tests drive `routes/login.js` and `routes/callback.js` with the real `@emdash-cms/auth` and an in-memory database and session.
+
+A mock Discord server is exported as `emdash-auth-discord/testing/mock-discord` (`test/mock-discord.mjs`) **for tests only**. It issues tokens for any user with a fixed secret, so never run it in production: it binds to `127.0.0.1` only and refuses to start when `NODE_ENV=production`. Start it with `node node_modules/emdash-auth-discord/test/mock-discord.mjs` (port from the `PORT` environment variable, default 4400), then run your app with `DISCORD_BASE_URL=http://127.0.0.1:4400` and `DISCORD_CLIENT_SECRET=mock-secret`. Add `as=<a|b|c|d|e>` to the authorize URL to choose the mock user, or `deny=1` to simulate a denied login.
+
+`pnpm-workspace.yaml` configures stand-alone development of this package (peer dependencies are not installed automatically).
+
+## License
+
+[MIT](./LICENSE)
