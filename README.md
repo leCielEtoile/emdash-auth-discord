@@ -23,21 +23,13 @@ Discord login (an authentication provider) for EmDash. Only members of a Discord
 
 ## Installation
 
-The package is not on the npm registry yet. Install it from GitHub, pinned to a release tag:
-
-```bash
-pnpm add github:leCielEtoile/emdash-auth-discord#semver:v0.1.0
-```
-
-### After npm publication
-
-Once the package is published to npm by this repository's release workflow (check that the npm page links back to `github.com/leCielEtoile/emdash-auth-discord` and shows provenance), you can install it by name:
+Install it from npm:
 
 ```bash
 pnpm add emdash-auth-discord
 ```
 
-Until then, do not install `emdash-auth-discord` from the registry: a package with that name would not be this one.
+Releases are published by this repository's release workflow with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the npm page links back to `github.com/leCielEtoile/emdash-auth-discord`. To pin a specific version, use `pnpm add emdash-auth-discord@<version>` (for example `0.1.2`).
 
 ## Setup
 

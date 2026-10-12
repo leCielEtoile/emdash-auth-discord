@@ -23,21 +23,13 @@ EmDash 用の Discord ログイン（認証プロバイダ）。指定したギ�
 
 ## インストール
 
-npm レジストリにはまだ公開していない。GitHub からリリースタグを指定して入れる。
-
-```bash
-pnpm add github:leCielEtoile/emdash-auth-discord#semver:v0.1.0
-```
-
-### npm 公開後
-
-このリポジトリのリリースワークフローで npm に公開した後は（npm のページが `github.com/leCielEtoile/emdash-auth-discord` を指し、provenance が付いていることを確認すること）、名前で入れられる。
+npm から入れる。
 
 ```bash
 pnpm add emdash-auth-discord
 ```
 
-それまでは、レジストリから `emdash-auth-discord` を入れないこと（同名のパッケージがあっても、このパッケージではない）。
+リリースはこのリポジトリのリリースワークフローが [npm provenance](https://docs.npmjs.com/generating-provenance-statements) 付きで公開するため、npm のページは `github.com/leCielEtoile/emdash-auth-discord` を指す。バージョンを固定するときは `pnpm add emdash-auth-discord@<バージョン>`（例: `0.1.2`）とする。
 
 ## セットアップ
 
