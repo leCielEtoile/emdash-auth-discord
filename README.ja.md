@@ -39,6 +39,8 @@ pnpm add emdash-auth-discord
 
 それまでは、レジストリから `emdash-auth-discord` を入れないこと（同名のパッケージがあっても、このパッケージではない）。
 
+GitHub Release には tarball と、`pnpm sbom` で生成した SBOM（CycloneDX の `sbom.cdx.json`、SPDX の `sbom.spdx.json`）を添付する。署名（attestation）は CycloneDX のみ。`gh attestation verify <tarball> -R leCielEtoile/emdash-auth-discord --predicate-type https://cyclonedx.org/bom` で検証できる。
+
 ## セットアップ
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) でアプリケーションを作る。Bot は不要。
