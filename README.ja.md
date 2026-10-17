@@ -31,6 +31,8 @@ pnpm add emdash-auth-discord
 
 リリースはこのリポジトリのリリースワークフローが [npm provenance](https://docs.npmjs.com/generating-provenance-statements) 付きで公開するため、npm のページは `github.com/leCielEtoile/emdash-auth-discord` を指す。バージョンを固定するときは `pnpm add emdash-auth-discord@<バージョン>`（例: `0.1.2`）とする。
 
+GitHub Release には tarball と、`pnpm sbom` で生成した SBOM（CycloneDX の `sbom.cdx.json`、SPDX の `sbom.spdx.json`）を添付する。署名（attestation）は CycloneDX のみ。`gh attestation verify <tarball> -R leCielEtoile/emdash-auth-discord --predicate-type https://cyclonedx.org/bom` で検証できる。
+
 ## セットアップ
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) でアプリケーションを作る。Bot は不要。

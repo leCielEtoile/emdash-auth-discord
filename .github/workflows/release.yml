@@ -5,6 +5,7 @@ name: Release
 #   - npmjs.com で Trusted Publisher を登録する（リポジトリ: このリポジトリ / ワークフロー: release.yml / 環境: npm-publish）
 #   - GitHub の Settings > Environments で npm-publish を作り、必須レビュアーを設定する
 #   - GitHub の Ruleset で v* タグの作成を管理者に限定する
+# リリースには tarball と SBOM（CycloneDX / SPDX）を添付する。署名（attestation）は CycloneDX のみ。
 # アクションはフルコミット SHA で固定する。更新は Dependabot に任せる。
 on:
   push:
@@ -56,10 +57,17 @@ jobs:
           mkdir -p dist
           pnpm pack --pack-destination dist
           echo "tarball=$(cd dist && ls *.tgz)" >> "$GITHUB_OUTPUT"
+      - name: SBOM を作成
+        run: |
+          pnpm sbom --sbom-format cyclonedx --prod --lockfile-only --out dist/sbom.cdx.json
+          pnpm sbom --sbom-format spdx --prod --lockfile-only --out dist/sbom.spdx.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: package
-          path: dist/*.tgz
+          path: |
+            dist/*.tgz
+            dist/sbom.cdx.json
+            dist/sbom.spdx.json
           if-no-files-found: error
           retention-days: 1
 
@@ -85,3 +93,40 @@ jobs:
         run: npm install -g npm@11
       - name: 公開
         run: npm publish "./${{ needs.build.outputs.tarball }}" --provenance --access public
+
+  # CycloneDX の SBOM を tarball に紐づけて署名する。checkout も install もしない
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ needs.build.outputs.tarball }}
+          sbom-path: sbom.cdx.json
+
+  # npm への公開と署名が済んだ後に GitHub Release を作り、tarball と SBOM を添付する
+  release:
+    needs: [build, publish, attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+      - name: Release を作成
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${TARBALL}" sbom.cdx.json sbom.spdx.json \
+            --repo "${GITHUB_REPOSITORY}" --verify-tag --generate-notes
