@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-10-29
+
+### Changed
+
+- Development dependencies updated: `@emdash-cms/auth` 1.3.0, `vitest` 5.0.5, `react` and `react-dom` 19.3.1. No runtime code changed.
+
+### Known issues
+
+- The `emdash` and `@emdash-cms/auth` releases pin `zod` 4.5.4, which has a high-severity advisory (GHSA-mrhx-c7xc-m3w5, fixed in 4.6.6). This package cannot update it on its own; it will be resolved once upstream EmDash ships a release with a patched Zod.
+
 ## [0.1.3] - 2026-10-23
 
 ### Added
