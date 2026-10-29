@@ -168,7 +168,7 @@ importers:
     devDependencies:
       '@emdash-cms/auth':
         specifier: ^1.2.0
-        version: 1.2.0
+        version: 1.3.0
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -184,8 +184,8 @@ importers:
 
 packages:
 
-  '@emdash-cms/auth@1.2.0':
-    resolution: {integrity: sha512-0/8lfva4uEOQuWrHoKZcif/4fyQkQyHXXBWiUUuw5tV+s7KCPh5qCNQdGEERmd1ZD1YJKS7/5OF5QOZK0c7HgQ==}
+  '@emdash-cms/auth@1.3.0':
+    resolution: {integrity: sha512-Q+GWHbCjhMTEv7mBioBh8fU7ahI3iZqi9YiDpYwcYD+GVUGtUz+lqKCv3jsWp4t9KgorZgh14DpMEa6oHvYUrA==}
     peerDependencies:
       astro: '>=6.0.0-beta.0'
       kysely: ^0.29.0
@@ -631,7 +631,7 @@ packages:
 
 snapshots:
 
-  '@emdash-cms/auth@1.2.0':
+  '@emdash-cms/auth@1.3.0':
     dependencies:
       '@oslojs/crypto': 1.0.1
       '@oslojs/encoding': 1.1.0
