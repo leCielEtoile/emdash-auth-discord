@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-11-24
+
+### Changed
+
+- Development dependencies updated: `@emdash-cms/auth` 1.5.0, `vite` 8.3.8, `vitest` 5.1.0, and `pnpm/action-setup` v6.1.1 in the workflows. No runtime code changed.
+
+### Fixed
+
+- `@emdash-cms/auth` 1.5.0 pins `zod` 4.6.7, which resolves the high-severity advisory GHSA-mrhx-c7xc-m3w5 that 0.1.4 carried as a known issue.
+
 ## [0.1.4] - 2026-10-29
 
 ### Changed
